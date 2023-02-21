@@ -1,5 +1,4 @@
 #import the library
-import torch
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import tqdm
 from sklearn.metrics import log_loss, f1_score, accuracy_score
@@ -7,6 +6,8 @@ import time
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import torch
+from torch import nn
 import os
 from skforecast.ForecasterAutoreg import ForecasterAutoreg
 from skforecast.model_selection import grid_search_forecaster
@@ -14,6 +15,8 @@ from skforecast.model_selection import backtesting_forecaster
 from xgboost import XGBRegressor
 import torch
 from torch import nn
+from NeuralNetworkApproach import  *
+
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -256,35 +259,7 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target,step
     ax.legend()
     plt.savefig(f"{symbol}_{task}")
     plt.show()
-class GRURegressor(nn.Module):
-    def __init__(self, features= 2, hidden_units= 32):
-        super(GRURegressor, self).__init__()
-        self.hidden_units = hidden_units
-        self.features = features
-        self.n_layers = 2
-        self.GRU = nn.GRU(input_size=features, hidden_size=self.hidden_units, num_layers=self.n_layers, batch_first=True
-                          ,dropout= 0.3)
-        self.linear = nn.Linear(self.hidden_units, 1)
 
-    def forward(self, x):
-        h0 = torch.zeros(self.n_layers, x.size(0), self.hidden_units).requires_grad_().to(device)
-
-        output, _ = self.GRU(x, h0)
-        output = output[:, -1, :].to(device)
-        return self.linear(output)
-
-
-class AdjMSELoss2(nn.Module):
-    def __init__(self):
-        super(AdjMSELoss2, self).__init__()
-
-    def forward(self, outputs, labels):
-        outputs = torch.squeeze(outputs)
-        beta = 2.5
-        loss = (outputs - labels) ** 2
-        adj_loss = beta - (beta - 0.5) / (1 + torch.exp(10000 * torch.mul(outputs, labels)))
-        loss = beta * loss / (1 + adj_loss)
-        return torch.mean(loss)
 
 def neural_network_sentiment(filename, SYMBOL):
 
@@ -600,6 +575,3 @@ if __name__ == '__main__':
 
     data = align_stock_sentiment(stocks, sentiment, symbol= SYMBOL, start=START,end=END)
     show_stock_sentiment(data, SYMBOL, False)
-
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/

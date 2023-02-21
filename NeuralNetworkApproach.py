@@ -3,8 +3,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from main import DEVICE as device
+from run import DEVICE as device
 from torch import nn
+
 
 class GRURegressor(nn.Module):
     def __init__(self, features= 2, hidden_units= 32):
@@ -33,6 +34,12 @@ class Custom_loss(nn.Module):
             loss *= 10
         return loss
 
+SEQUENCE_LENGTH = 32
+BATCH_SIZE = 1
+LR = 5e-4
+HU = 64
+
+
 
 def neural_network_sentiment(filename, data,SYMBOL):
 
@@ -40,8 +47,6 @@ def neural_network_sentiment(filename, data,SYMBOL):
     from sklearn.preprocessing import MinMaxScaler
     from torch.utils.data import Dataset, DataLoader
 
-    SEQUENCE_LENGTH = 32
-    BATCH_SIZE = 1
 
     class SequenceDataset(Dataset):
         def __init__(self, dataframe, target, features, sequence_length=5):
@@ -92,9 +97,8 @@ def neural_network_sentiment(filename, data,SYMBOL):
     train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True )
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, drop_last= True)
 
-
-    learning_rate = 5e-4
-    num_hidden_units = 128
+    learning_rate = LR
+    num_hidden_units = HU
     evals = []
 
     model = GRURegressor(features=2, hidden_units=num_hidden_units)
@@ -179,9 +183,6 @@ def neural_network(filename, data):
     from sklearn.preprocessing import MinMaxScaler
     from torch.utils.data import Dataset, DataLoader
 
-    SEQUENCE_LENGTH = 32
-    BATCH_SIZE = 1
-
     class SequenceDataset(Dataset):
         def __init__(self, dataframe, target, features, sequence_length=5):
             self.features = features
@@ -232,12 +233,12 @@ def neural_network(filename, data):
     test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
 
 
-    learning_rate = 5e-4
-    num_hidden_units = 128
+    learning_rate = LR
+    num_hidden_units = HU
 
     model = GRURegressor(features=1, hidden_units=num_hidden_units)
     model.to(device)
-    loss_function = AdjMSELoss2()
+    loss_function = Custom_loss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     evals = []
 
@@ -310,6 +311,7 @@ def neural_network(filename, data):
     plt.title(f"Model without sentiment. MSE {evals[-1]}")
     plt.savefig(f"{filename}_model_results.png")
     plt.show()
+
 if __name__ == "__main__":
     k = GRURegressor()
     print(k)

@@ -37,38 +37,37 @@ def main():
     # Save to disk
     date_score.to_csv(os.path.join(os.getcwd(), "tweet_data", "Daily_Sentiment.csv"))
 
-# BEGIN CONFIG NNA#
+# BEGIN CONFIG #
+FILENAME = f"{time.time()}"
+
+# BEGIN CONFIG GENERAL #
+SYMBOL = "AAPL"
+START = "2015-01-01"
+END = "2019-12-31"
+# BEGIN CONFIG NNA #
 SEQUENCE_LENGTH = 32
 BATCH_SIZE = 1
 LR = 5e-4
 HU = 64
 DEVICE = "cpu"
-# END CONFIG NNA#
+# END CONFIG NNA #
+# END CONFIG
 
 
 if __name__ == '__main__':
     device = DEVICE
-    # CONFIG
-    SYMBOL = "AAPL"
-    START = "2015-01-01"
-    END = "2019-12-31"
 
     sentiment = pd.read_csv(os.path.join(os.getcwd(), "tweet_data", "Daily_Sentiment.csv"), index_col="day_date")
     sentiment.index = pd.to_datetime(sentiment.index)
     stocks = prepare_stock_data()
     data = align_stock_sentiment(stocks, sentiment, symbol=SYMBOL, start=START, end=END)
     data = score_momentum(data, SYMBOL)
-    filename = f"{time.time()}"
-    neural_network_sentiment(filename,data,SYMBOL)
-    neural_network(filename,data)
-
-    exit()
 
 
-    #CONFIG
-    SYMBOL = "TSLA"
-    START = "2016-01-01"
-    END = "2019-12-31"
+    # BEGIN TRAINING #
+    neural_network_sentiment(data,SYMBOL)
+    neural_network(data)
+    # END TRAINING #
 
 
     sentiment = pd.read_csv(os.path.join(os.getcwd(), "tweet_data", "Daily_Sentiment.csv"), index_col="day_date")

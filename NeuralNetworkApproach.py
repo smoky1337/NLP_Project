@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from run import DEVICE as device, HU, LR, BATCH_SIZE, SEQUENCE_LENGTH
+from run import DEVICE as device, HU, LR, BATCH_SIZE, SEQUENCE_LENGTH, FILENAME
 from torch import nn
 
 
@@ -36,7 +36,7 @@ class Custom_loss(nn.Module):
 
 
 
-def neural_network_sentiment(filename, data,SYMBOL):
+def neural_network_sentiment(data,SYMBOL):
 
 
     from sklearn.preprocessing import MinMaxScaler
@@ -155,7 +155,7 @@ def neural_network_sentiment(filename, data,SYMBOL):
         test_model(test_loader, model, loss_function)
         print(f"Elapsed time in s: {np.round(time.time()-start,2)}")
 
-    torch.save(model.state_dict(), f"{filename}_sentiment_model.pt")
+    torch.save(model.state_dict(), f"{FILENAME}_sentiment_model.pt")
 
     for X,y in test_loader:
         if "predictions" not in locals():
@@ -169,10 +169,10 @@ def neural_network_sentiment(filename, data,SYMBOL):
     plt.plot(y_true)
     plt.title(f"Model with sentiment MSE {evals[-1]}")
     plt.legend(["Preds", "Y_true"])
-    plt.savefig(f"{filename}_sentiment_model_results.png")
+    plt.savefig(f"{FILENAME}_sentiment_model_results.png")
     plt.show()
 
-def neural_network(filename, data):
+def neural_network(data):
 
 
     from sklearn.preprocessing import MinMaxScaler
@@ -290,7 +290,7 @@ def neural_network(filename, data):
         test_model(test_loader, model, loss_function)
         print(f"Elapsed time in s: {np.round(time.time()-start,2)}")
 
-    torch.save(model.state_dict(), f"{filename}_model.pt")
+    torch.save(model.state_dict(), f"{FILENAME}_model.pt")
 
     for X,y in test_loader:
         if "predictions" not in locals():
@@ -304,7 +304,7 @@ def neural_network(filename, data):
     plt.plot(y_true)
     plt.legend(["Preds", "Y_true"])
     plt.title(f"Model without sentiment. MSE {evals[-1]}")
-    plt.savefig(f"{filename}_model_results.png")
+    plt.savefig(f"{FILENAME}_model_results.png")
     plt.show()
 
 if __name__ == "__main__":

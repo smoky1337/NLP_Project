@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import tqdm
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+from sklearn.metrics import mean_squared_error
 
 
 def sentiment_vader(sentence):
@@ -119,10 +120,10 @@ def align_stock_sentiment(stock_data, sentiment_data, symbol="AAPL", start="2015
 
 
 def show_stock_sentiment(data, symbol, save=False, path="Stock_Sentiment.png"):
-    plt.plot(data.index.get_level_values(0), data["change"], c="r")
+    plt.plot(data.index.get_level_values(0), data["close_value"].diff().fillna(0), c="r")
 
-    plt.ylabel("Close Price Difference (%)")
-    plt.legend(["% Change"])
+    plt.ylabel("Close Price Difference")
+    plt.legend(["Difference"])
 
     plt.twinx()
     plt.plot(data.index.get_level_values(0), data[symbol])
@@ -136,3 +137,12 @@ def show_stock_sentiment(data, symbol, save=False, path="Stock_Sentiment.png"):
         plt.savefig(path)
     else:
         plt.show()
+
+
+def custom_loss_sk(y_true,y_pred):
+    loss = []
+    for i,(y,y_hat) in enumerate(zip(y_true,y_pred)):
+        loss.append(mean_squared_error(y_true, y_pred))
+        if y < 0 < y_hat or y_hat < 0 < y:
+            loss[i] *= 10
+    return np.mean(loss)

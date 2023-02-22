@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from run import DEVICE as device
+from run import DEVICE as device, HU, LR, BATCH_SIZE, SEQUENCE_LENGTH
 from torch import nn
 
 
@@ -33,11 +33,6 @@ class Custom_loss(nn.Module):
         if y_true < 0 < y_hat or y_hat < 0 < y_true:
             loss *= 10
         return loss
-
-SEQUENCE_LENGTH = 32
-BATCH_SIZE = 1
-LR = 5e-4
-HU = 64
 
 
 
@@ -72,11 +67,11 @@ def neural_network_sentiment(filename, data,SYMBOL):
 
 
     split = int(len(data) / 10)
-    train_data = data[:-split]
+    train_data = data[:-split].fillna(0)
     scaler = MinMaxScaler()
     train_data["close_value"] = scaler.fit_transform(train_data["close_value"].diff().fillna(0).to_numpy().reshape(-1,1))
 
-    test_data = data[-split:]
+    test_data = data[-split:].fillna(0)
     test_data["close_value"] = scaler.transform(test_data["close_value"].diff().fillna(0).to_numpy().reshape(-1,1))
     train_data = train_data.reset_index()
 

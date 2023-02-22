@@ -37,16 +37,19 @@ def main():
     # Save to disk
     date_score.to_csv(os.path.join(os.getcwd(), "tweet_data", "Daily_Sentiment.csv"))
 
-
-
-
-
+# BEGIN CONFIG NNA#
+SEQUENCE_LENGTH = 32
+BATCH_SIZE = 1
+LR = 5e-4
+HU = 64
 DEVICE = "cpu"
-# Press the green button in the gutter to run the script.
+# END CONFIG NNA#
+
+
 if __name__ == '__main__':
     device = DEVICE
     # CONFIG
-    SYMBOL = "TSLA"
+    SYMBOL = "AAPL"
     START = "2015-01-01"
     END = "2019-12-31"
 

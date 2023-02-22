@@ -9,37 +9,11 @@ from utils import *
 from SkForecastApproach import *
 
 warnings.filterwarnings('ignore')
-data = pd.read_csv(os.path.join(os.getcwd(),"tweet_data", "Tweet_Stocks_Sentiment.csv"), index_col="tweet_id")
-symbols = ["AAPL", "AMZN", "GOOG", "GOOGL", "MSFT", "TSLA"]
 
-
-#calculate the negative, positive, neutral and compound scores, plus verbal evaluation
-
-
-
-
-
-def main():
-    return 0
-    # Create Sentiment Data
-    # Create Daily Sentiment for stock
-    data = pd.read_csv(os.path.join(os.getcwd(), "tweet_data", "Tweet_Stocks_Sentiment.csv"), index_col="tweet_id")
-    symbols = ["AAPL", "AMZN", "GOOG", "GOOGL", "MSFT", "TSLA"]
-    date_score = pd.DataFrame()
-    date_score.index = data.post_date.unique()
-    for s in symbols:
-        group = data[data[s] > 0]
-        avg = group.groupby('post_date')["score"].mean().rename(s)
-        date_score = date_score.join(avg, lsuffix="")
-
-    #create avergae
-    date_score["avg_score"] = date_score.sum(axis=1) / 6
-    # Save to disk
-    date_score.to_csv(os.path.join(os.getcwd(), "tweet_data", "Daily_Sentiment.csv"))
 
 # BEGIN CONFIG #
 FILENAME = f"{time.time()}"
-
+SYMBOLS = ["AAPL", "AMZN", "GOOG", "GOOGL", "MSFT", "TSLA"]
 # BEGIN CONFIG GENERAL #
 SYMBOL = "AAPL"
 START = "2015-01-01"
@@ -57,23 +31,26 @@ DEVICE = "cpu"
 if __name__ == '__main__':
     device = DEVICE
 
+    # BEGIN DATA CREATION #
+    # Warning: Takes around 5 hours and overwrites current files! #
+    # create_sentiment_scores()
+    # create_daily_sentiment()
+    # END DATA CREATION #
+
+    # BEGIN DATA WRANGLING #
+    data = pd.read_csv(os.path.join(os.getcwd(), "tweet_data", "Tweet_Stocks_Sentiment.csv"), index_col="tweet_id")
     sentiment = pd.read_csv(os.path.join(os.getcwd(), "tweet_data", "Daily_Sentiment.csv"), index_col="day_date")
     sentiment.index = pd.to_datetime(sentiment.index)
     stocks = prepare_stock_data()
     data = align_stock_sentiment(stocks, sentiment, symbol=SYMBOL, start=START, end=END)
     data = score_momentum(data, SYMBOL)
-
+    # END DATA WRANGLING #
 
     # BEGIN TRAINING #
-    neural_network_sentiment(data,SYMBOL)
-    neural_network(data)
+    # neural_network_sentiment(data,SYMBOL)
+    # neural_network(data)
     # END TRAINING #
 
-
-    sentiment = pd.read_csv(os.path.join(os.getcwd(), "tweet_data", "Daily_Sentiment.csv"), index_col="day_date")
-    sentiment.index = pd.to_datetime(sentiment.index)
-    #compare_sentiment_to_avg(sentiment, symbols= ["AAPL", "GOOG"])
-    stocks = prepare_stock_data()
-
-    data = align_stock_sentiment(stocks, sentiment, symbol= SYMBOL, start=START,end=END)
+    compare_sentiment_to_avg(sentiment, symbols= ["AAPL", "GOOG"])
     show_stock_sentiment(data, SYMBOL, False)
+    create_train_forecaster(SYMBOL, START, END, exog=False, task = "r", columns = None, target="close_value", steps=1, verbose=False)

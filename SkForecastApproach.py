@@ -4,6 +4,7 @@ from skforecast.model_selection import grid_search_forecaster
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBRegressor, XGBClassifier
 from sklearn.metrics import log_loss, f1_score, accuracy_score
+from run import SEQUENCE_LENGTH
 
 
 from utils import *
@@ -27,19 +28,19 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
     data = score_momentum(data, SYMBOL)
     data_train, data_val, data_test = create_split_data(data, SYMBOL, COLUMNS, start=START, end=END, train=TRAIN,
                                                         return_weekdays=EXO)
-
-    if task == "regression":
+    # Choose Task, use Gradient Boosted Trees
+    if task == "regression" or task == "r":
         regressor = XGBRegressor(random_state=123)
-    elif task == "classification":
+    elif task == "classification" or task == "c":
         regressor = XGBClassifier(random_state=123)
     else:
-        raise ValueError(f"{task} is not in set (regression, classification")
+        raise ValueError(f"{task} is not in set (regression (r), classification (c)")
     # Create and train forecaster
     # ==============================================================================
     # Create forecaster
     forecaster = ForecasterAutoreg(
         regressor=regressor,
-        lags=7,
+        lags=SEQUENCE_LENGTH,
         transformer_y=StandardScaler()
     )
     if verbose:
@@ -51,8 +52,6 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
         'learning_rate': [0.01, 0.1]
     }
 
-    # Lags used as predictors
-    lags_grid = [24, 48, 72, [1, 2, 3, 23, 24, 25, 71, 72, 73]]
     if exog:
         exog = [column for column in data_train.columns if column.startswith('week')]
         exog = pd.concat([data_train[exog], data_val[exog]])
@@ -64,7 +63,6 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
         y=pd.concat([data_train[target], data_val[target]]),  # Train and validation data
         exog=exog,
         param_grid=param_grid,
-        lags_grid=lags_grid,
         steps=steps,
         refit=False,
         metric='mean_squared_error' if task == "regression" else accuracy_score,

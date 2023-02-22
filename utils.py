@@ -84,7 +84,7 @@ def create_daily_sentiment():
     date_score.to_csv(os.path.join(os.getcwd(), "tweet_data", "Daily_Sentiment.csv"))
 
 
-def compare_sentiment_to_avg(data, symbols=["AAPL"], save=False, path="SentimentComp.png"):
+def compare_sentiment_to_avg(data, symbols=["AAPL"], save=True, path="SentimentComp"):
     plt.plot(data[symbols + ["avg_score"]].resample("1m").mean())
     plt.legend(symbols + ["Average"])
     plt.suptitle("Monthly Sentiment by Stock")
@@ -92,7 +92,7 @@ def compare_sentiment_to_avg(data, symbols=["AAPL"], save=False, path="Sentiment
     plt.xlabel("Date")
     plt.ylabel("Sentiment")
     if save:
-        plt.savefig(path)
+        plt.savefig("".join((path, *symbols, ".png")))
     plt.show()
 
 

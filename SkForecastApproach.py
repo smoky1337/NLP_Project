@@ -1,22 +1,21 @@
 from skforecast.ForecasterAutoreg import ForecasterAutoreg
 from skforecast.model_selection import backtesting_forecaster
 from skforecast.model_selection import grid_search_forecaster
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import MinMaxScaler
 from xgboost import XGBRegressor, XGBClassifier
 from sklearn.metrics import log_loss, f1_score, accuracy_score
-from run import SEQUENCE_LENGTH
 
 
 from utils import *
 
 
-def create_train_forecaster(symbol, start, end, exog, task, columns, target, steps=1, verbose=False):
+def create_train_forecaster(symbol, start, end, exog, task, columns, target, steps=1, SEQUENCE_LENGTH = 24, filename = "",metric = None,verbose=False):
     # CONFIG
     SYMBOL = symbol
     START = start
     END = end
-    COLUMNS = [target] + columns
-    TRAIN = 0.8
+    COLUMNS = [target] + columns if columns is not None else [target]
+    TRAIN = 0.9
     EXO = exog
 
     sentiment = pd.read_csv(os.path.join(os.getcwd(), "tweet_data", "Daily_Sentiment.csv"), index_col="day_date")
@@ -26,6 +25,9 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
 
     data = align_stock_sentiment(stocks, sentiment, symbol=SYMBOL, start=START, end=END)
     data = score_momentum(data, SYMBOL)
+    if target == "close_value":
+        data["close_value"] = data["close_value"].diff().fillna(0)
+
     data_train, data_val, data_test = create_split_data(data, SYMBOL, COLUMNS, start=START, end=END, train=TRAIN,
                                                         return_weekdays=EXO)
     # Choose Task, use Gradient Boosted Trees
@@ -41,13 +43,13 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
     forecaster = ForecasterAutoreg(
         regressor=regressor,
         lags=SEQUENCE_LENGTH,
-        transformer_y=StandardScaler()
+        transformer_y=MinMaxScaler()
     )
     if verbose:
         print(forecaster)
 
     param_grid = {
-        'n_estimators': [100, 500],
+        'n_estimators': [10,100],
         'max_depth': [3, 5, 10],
         'learning_rate': [0.01, 0.1]
     }
@@ -58,6 +60,11 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
     else:
         exog = None
 
+    if not metric:
+        metric = 'mean_squared_error' if task == "regression" or "r" else accuracy_score
+    mname = metric if type(metric) == str else metric.__name__
+
+
     results_grid = grid_search_forecaster(
         forecaster=forecaster,
         y=pd.concat([data_train[target], data_val[target]]),  # Train and validation data
@@ -65,31 +72,33 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
         param_grid=param_grid,
         steps=steps,
         refit=False,
-        metric='mean_squared_error' if task == "regression" else accuracy_score,
+        metric=metric,
         initial_train_size=len(data_train),  # Model is trained with trainign data
         fixed_train_size=False,
         return_best=True,
         verbose=verbose
     )
-    print(results_grid)
-    metric, predictions = backtesting_forecaster(
+
+
+    error, predictions = backtesting_forecaster(
         forecaster=forecaster,
         y=pd.concat([data_train[target], data_val[target], data_test[target]]),
         initial_train_size=len(data_train) + len(data_val),
         fixed_train_size=False,
         steps=steps,
         refit=False,
-        metric='mean_squared_error',
+        metric=metric,
         verbose=verbose  # Change to True to see detailed information
     )
 
-    print(f"Backtest error: {metric}")
+    print(f"Backtest error {mname}: {error}")
     # Plot of predictions
     # ==============================================================================
     fig, ax = plt.subplots(figsize=(11, 4))
+    data_train[COLUMNS[0]].plot(ax=ax, label="train")
     data_test[COLUMNS[0]].plot(ax=ax, label='test')
     predictions['pred'].plot(ax=ax, label='predictions')
-    ax.set_title(f"Overall Backtest Error {metric}")
+    ax.set_title(f"Overall Backtest Error {mname}{error}")
     ax.legend()
-    plt.savefig(f"{symbol}_{task}")
+    plt.savefig(f"{filename}_{symbol}_{task}_{SEQUENCE_LENGTH}_{mname}.png")
     plt.show()

@@ -129,7 +129,7 @@ def show_stock_sentiment(data, symbol, save=False, path="Stock_Sentiment.png"):
     plt.ylabel("Average Sentiment Score")
     plt.xlabel("Days")
     plt.suptitle("Stock Price Change vs Sentiment")
-    plt.title(f"From {data.index.levels[0].min().date()} to {data.index.levels[0].max().date()} for symbol {symbol}")
+    plt.title(f"From {data.index.min().date()} to {data.index.max().date()} for symbol {symbol}")
 
     plt.legend(["Sentiment"])
     if save:

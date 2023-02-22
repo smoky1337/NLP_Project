@@ -53,4 +53,5 @@ if __name__ == '__main__':
 
     compare_sentiment_to_avg(sentiment, symbols= ["AAPL", "GOOG"])
     show_stock_sentiment(data, SYMBOL, False)
-    create_train_forecaster(SYMBOL, START, END, exog=False, task = "r", columns = None, target="close_value", steps=1, verbose=False)
+    create_train_forecaster(SYMBOL, START, END, exog=False, task = "r", columns = None, target="close_value", steps=1,
+                            SEQUENCE_LENGTH=SEQUENCE_LENGTH, filename=FILENAME, verbose=False)

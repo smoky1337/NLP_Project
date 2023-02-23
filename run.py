@@ -12,7 +12,7 @@ warnings.filterwarnings('ignore')
 
 
 # BEGIN CONFIG #
-FILENAME = f"{time.time()}"
+FILENAME = f"{int(time.time())}"
 SYMBOLS = ["AAPL", "AMZN", "GOOG", "GOOGL", "MSFT", "TSLA"]
 # BEGIN CONFIG GENERAL #
 SYMBOL = "AAPL"
@@ -50,8 +50,10 @@ if __name__ == '__main__':
     # neural_network_sentiment(data,SYMBOL)
     # neural_network(data)
     # END TRAINING #
-
-    compare_sentiment_to_avg(sentiment, symbols= ["AAPL", "GOOG"])
-    show_stock_sentiment(data, SYMBOL, False)
-    create_train_forecaster(SYMBOL, START, END, exog=False, task = "r", columns = None, target="close_value", steps=1,
-                            SEQUENCE_LENGTH=SEQUENCE_LENGTH, filename=FILENAME, verbose=False)
+    show_stock_sentiment(data, SYMBOL, True, path=f"{FILENAME}_{SYMBOL}.png")
+    # Basic Test
+    #create_train_forecaster(SYMBOL, START, END, exog=False, task = "r", columns = None, target="close_value", steps=1,
+    #                        SEQUENCE_LENGTH=SEQUENCE_LENGTH, filename=FILENAME, verbose=False)
+    # Full Test
+    create_train_forecaster(SYMBOL, START, END, exog=True, task="r", columns=[SYMBOL, "volume"], target="close_value", steps=1,
+                            SEQUENCE_LENGTH=SEQUENCE_LENGTH, filename=FILENAME, metric=custom_loss_sk, verbose=False)

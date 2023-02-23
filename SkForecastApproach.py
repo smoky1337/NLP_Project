@@ -1,6 +1,7 @@
 from skforecast.ForecasterAutoreg import ForecasterAutoreg
 from skforecast.model_selection import backtesting_forecaster
 from skforecast.model_selection import grid_search_forecaster
+from skforecast.utils import save_forecaster
 from sklearn.preprocessing import MinMaxScaler
 from xgboost import XGBRegressor, XGBClassifier
 from sklearn.metrics import log_loss, f1_score, accuracy_score
@@ -15,8 +16,10 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
     START = start
     END = end
     COLUMNS = [target] + columns if columns is not None else [target]
+    SENTIMENT = True if SYMBOL in COLUMNS else False
     TRAIN = 0.9
     EXO = exog
+    USEEXO = exog
 
     sentiment = pd.read_csv(os.path.join(os.getcwd(), "tweet_data", "Daily_Sentiment.csv"), index_col="day_date")
     sentiment.index = pd.to_datetime(sentiment.index)
@@ -49,9 +52,9 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
         print(forecaster)
 
     param_grid = {
-        'n_estimators': [10,100],
+        'n_estimators': [10,100, 500],
         'max_depth': [3, 5, 10],
-        'learning_rate': [0.01, 0.1]
+        'learning_rate': [0.01, 0.1, 0.3]
     }
 
     if exog:
@@ -78,7 +81,7 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
         return_best=True,
         verbose=verbose
     )
-
+    results_grid.to_csv(f"rg_{filename}_{symbol}_{SENTIMENT}_{USEEXO}_{task}_{SEQUENCE_LENGTH}_{mname}.csv")
 
     error, predictions = backtesting_forecaster(
         forecaster=forecaster,
@@ -90,7 +93,8 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
         metric=metric,
         verbose=verbose  # Change to True to see detailed information
     )
-
+    # Save Model
+    save_forecaster(forecaster, file_name=f'{filename}_{symbol}_{SENTIMENT}_{USEEXO}_{task}_{SEQUENCE_LENGTH}_{mname}.py', verbose=False)
     print(f"Backtest error {mname}: {error}")
     # Plot of predictions
     # ==============================================================================
@@ -100,5 +104,10 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
     predictions['pred'].plot(ax=ax, label='predictions')
     ax.set_title(f"Overall Backtest Error {mname}{error}")
     ax.legend()
-    plt.savefig(f"{filename}_{symbol}_{task}_{SEQUENCE_LENGTH}_{mname}.png")
-    plt.show()
+    plt.savefig(f"All_{filename}_{symbol}_{SENTIMENT}_{USEEXO}_{task}_{SEQUENCE_LENGTH}_{mname}.png")
+    fig, ax = plt.subplots(figsize=(11, 4))
+    data_test[COLUMNS[0]].plot(ax=ax, label='test')
+    predictions['pred'].plot(ax=ax, label='predictions')
+    ax.set_title(f"Overall Backtest Error {mname}{error}")
+    ax.legend()
+    plt.savefig(f"Test_{filename}_{symbol}_{SENTIMENT}_{USEEXO}_{task}_{SEQUENCE_LENGTH}_{mname}.png")

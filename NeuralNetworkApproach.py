@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import torch
 from run import DEVICE as device, HU, LR, BATCH_SIZE, SEQUENCE_LENGTH, FILENAME
 from torch import nn
+from sklearn.preprocessing import MinMaxScaler
+from torch.utils.data import Dataset, DataLoader
 
 
 class GRURegressor(nn.Module):
@@ -34,37 +36,30 @@ class Custom_loss(nn.Module):
             loss *= 10
         return loss
 
+class SequenceDataset(Dataset):
+    def __init__(self, dataframe, target, features, sequence_length=5):
+        self.features = features
+        self.target = target
+        self.sequence_length = sequence_length
+        self.y = torch.tensor(dataframe[target].values).float()
+        self.X = torch.tensor(dataframe[features].values).float()
+
+    def __len__(self):
+        return self.X.shape[0]
+
+    def __getitem__(self, i):
+        if i >= self.sequence_length - 1:
+            i_start = i - self.sequence_length + 1
+            x = self.X[i_start:(i + 1), :]
+        else:
+            padding = self.X[0].repeat(self.sequence_length - i - 1, 1)
+            x = self.X[0:(i + 1), :]
+            x = torch.cat((padding, x), 0)
+
+        return x, self.y[i]
 
 
 def neural_network_sentiment(data,SYMBOL):
-
-
-    from sklearn.preprocessing import MinMaxScaler
-    from torch.utils.data import Dataset, DataLoader
-
-
-    class SequenceDataset(Dataset):
-        def __init__(self, dataframe, target, features, sequence_length=5):
-            self.features = features
-            self.target = target
-            self.sequence_length = sequence_length
-            self.y = torch.tensor(dataframe[target].values).float()
-            self.X = torch.tensor(dataframe[features].values).float()
-
-        def __len__(self):
-            return self.X.shape[0]
-
-        def __getitem__(self, i):
-            if i >= self.sequence_length - 1:
-                i_start = i - self.sequence_length + 1
-                x = self.X[i_start:(i + 1), :]
-            else:
-                padding = self.X[0].repeat(self.sequence_length - i - 1, 1)
-                x = self.X[0:(i + 1), :]
-                x = torch.cat((padding, x), 0)
-
-            return x, self.y[i]
-
 
     split = int(len(data) / 10)
     train_data = data[:-split].fillna(0)

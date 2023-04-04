@@ -28,11 +28,16 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
 
     data = align_stock_sentiment(stocks, sentiment, symbol=SYMBOL, start=START, end=END)
     data = score_momentum(data, SYMBOL)
+    scaler = MinMaxScaler()
     if target == "close_value":
         data["close_value"] = data["close_value"].diff().fillna(0)
 
     data_train, data_val, data_test = create_split_data(data, SYMBOL, COLUMNS, start=START, end=END, train=TRAIN,
                                                         return_weekdays=EXO)
+    data_train["close_value"] = scaler.fit_transform(data_train["close_value"].to_numpy().reshape(-1, 1))
+    data_val["close_value"] = scaler.transform(data_val["close_value"].to_numpy().reshape(-1, 1))
+    data_test["close_value"] = scaler.transform(data_test["close_value"].to_numpy().reshape(-1, 1))
+
     # Choose Task, use Gradient Boosted Trees
     if task == "regression" or task == "r":
         regressor = XGBRegressor(random_state=123)
@@ -98,16 +103,20 @@ def create_train_forecaster(symbol, start, end, exog, task, columns, target, ste
     print(f"Backtest error {mname}: {error}")
     # Plot of predictions
     # ==============================================================================
-    fig, ax = plt.subplots(figsize=(11, 4))
-    data_train[COLUMNS[0]].plot(ax=ax, label="train")
-    data_test[COLUMNS[0]].plot(ax=ax, label='test')
-    predictions['pred'].plot(ax=ax, label='predictions')
-    ax.set_title(f"Overall Backtest Error {mname}{error}")
-    ax.legend()
+
+    data_train["scaled"] = scaler.inverse_transform(data_train[COLUMNS[0]].to_numpy().reshape(-1, 1))
+    data_test["scaled"] = scaler.inverse_transform(data_test[COLUMNS[0]].to_numpy().reshape(-1, 1))
+    predictions["scaled"] = scaler.inverse_transform(predictions["pred"].to_numpy().reshape(-1, 1))
+    data_train["scaled"].plot(label="train")
+    data_test["scaled"].plot(label="test")
+    predictions["scaled"].plot(label="pred")
+    plt.title(f"Overall Backtest Error {symbol} {mname}{error}")
+    plt.legend()
     plt.savefig(f"All_{filename}_{symbol}_{SENTIMENT}_{USEEXO}_{task}_{SEQUENCE_LENGTH}_{mname}.png")
-    fig, ax = plt.subplots(figsize=(11, 4))
-    data_test[COLUMNS[0]].plot(ax=ax, label='test')
-    predictions['pred'].plot(ax=ax, label='predictions')
-    ax.set_title(f"Overall Backtest Error {mname}{error}")
-    ax.legend()
+    plt.show()
+    data_test["scaled"].plot(label="test")
+    predictions["scaled"].plot(label="pred")
+    plt.title(f"Overall Backtest Error {symbol} {mname}{error}")
+    plt.legend()
     plt.savefig(f"Test_{filename}_{symbol}_{SENTIMENT}_{USEEXO}_{task}_{SEQUENCE_LENGTH}_{mname}.png")
+    plt.show()

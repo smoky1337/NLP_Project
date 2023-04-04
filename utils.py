@@ -135,8 +135,7 @@ def show_stock_sentiment(data, symbol, save=False, path="Stock_Sentiment.png"):
     plt.legend(["Sentiment"])
     if save:
         plt.savefig(path)
-    else:
-        plt.show()
+    plt.show()
 
 
 def custom_loss_sk(y_true,y_pred):

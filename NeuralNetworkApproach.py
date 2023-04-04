@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import torch
-from run import DEVICE as device, HU, LR, BATCH_SIZE, SEQUENCE_LENGTH, FILENAME
+from run import DEVICE as device, HU, LR, BATCH_SIZE, SEQUENCE_LENGTH, FILENAME, EPOCHS
 from torch import nn
 from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import Dataset, DataLoader
@@ -33,7 +33,7 @@ class Custom_loss(nn.Module):
     def forward(self, y_true, y_hat):
         loss = nn.MSELoss()(y_true,y_hat)
         if y_true < 0 < y_hat or y_hat < 0 < y_true:
-            loss *= 10
+            loss += 100
         return loss
 
 class SequenceDataset(Dataset):
@@ -58,6 +58,48 @@ class SequenceDataset(Dataset):
 
         return x, self.y[i]
 
+def train_model(data_loader, model, loss_function, optimizer):
+    t = time.time()
+    num_batches = len(data_loader)
+    total_loss = 0
+    model.train()
+
+    for X, y in data_loader:
+        X = X.to(device)
+        y = y.to(device)
+        output = model(X)
+        output = output.to(device)
+        loss = loss_function(output, y)
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        total_loss += loss.item()
+
+    avg_loss = total_loss / num_batches
+    print(f"Train loss: {avg_loss}, Elapsed time in s: {np.round(time.time()-t,2)}")
+
+def test_model(data_loader, model, loss_function, evals):
+    t = time.time()
+
+    num_batches = len(data_loader)
+    total_loss = 0
+
+    model.to(device)
+    model.eval()
+
+    with torch.no_grad():
+        for X, y in data_loader:
+            X = X.to(device)
+            y = y.to(device)
+            output = model(X)
+            output = output.to(device)
+            total_loss += loss_function(output, y).item()
+
+    avg_loss = total_loss / num_batches
+    evals.append(avg_loss)
+    print(f"Test loss: {avg_loss}, Elapsed time in s: {np.round(time.time()-t,2)}")
 
 def neural_network_sentiment(data,SYMBOL):
 
@@ -97,60 +139,18 @@ def neural_network_sentiment(data,SYMBOL):
 
     optimizer = torch.optim.Adam(model.parameters(),lr=learning_rate)
 
-    def train_model(data_loader, model, loss_function, optimizer):
-        t = time.time()
-        num_batches = len(data_loader)
-        total_loss = 0
-        model.train()
-
-        for X, y in data_loader:
-            X = X.to(device)
-            y = y.to(device)
-            output = model(X)
-            output = output.to(device)
-            loss = loss_function(output, y)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            total_loss += loss.item()
-
-        avg_loss = total_loss / num_batches
-        print(f"Train loss: {avg_loss}, Elapsed time in s: {np.round(time.time()-t,2)}")
-
-    def test_model(data_loader, model, loss_function):
-        t = time.time()
-
-        num_batches = len(data_loader)
-        total_loss = 0
-
-        model.to(device)
-        model.eval()
-
-        with torch.no_grad():
-            for X, y in data_loader:
-                X = X.to(device)
-                y = y.to(device)
-                output = model(X)
-                output = output.to(device)
-                total_loss += loss_function(output, y).item()
-
-        avg_loss = total_loss / num_batches
-        evals.append(avg_loss)
-        print(f"Test loss: {avg_loss}, Elapsed time in s: {np.round(time.time()-t,2)}")
 
     print("Untrained test\n--------")
-    test_model(test_loader, model, loss_function)
+    test_model(test_loader, model, loss_function, [])
     print()
     start = time.time()
-    for ix_epoch in range(15):
+    for ix_epoch in range(EPOCHS):
         print(f"Epoch {ix_epoch}\n---------")
         train_model(train_loader, model, loss_function, optimizer=optimizer)
-        test_model(test_loader, model, loss_function)
+        test_model(test_loader, model, loss_function, evals)
         print(f"Elapsed time in s: {np.round(time.time()-start,2)}")
 
-    torch.save(model.state_dict(), f"{FILENAME}_sentiment_model.pt")
+    torch.save(model.state_dict(), f"{FILENAME}_{SYMBOL}_sentiment_model.pt")
 
     for X,y in test_loader:
         if "predictions" not in locals():
@@ -164,36 +164,10 @@ def neural_network_sentiment(data,SYMBOL):
     plt.plot(y_true)
     plt.title(f"Model with sentiment MSE {evals[-1]}")
     plt.legend(["Preds", "Y_true"])
-    plt.savefig(f"{FILENAME}_sentiment_model_results.png")
+    plt.savefig(f"{FILENAME}_{SYMBOL}_sentiment_model_results.png")
     plt.show()
 
 def neural_network(data):
-
-
-    from sklearn.preprocessing import MinMaxScaler
-    from torch.utils.data import Dataset, DataLoader
-
-    class SequenceDataset(Dataset):
-        def __init__(self, dataframe, target, features, sequence_length=5):
-            self.features = features
-            self.target = target
-            self.sequence_length = sequence_length
-            self.y = torch.tensor(dataframe[target].values).float()
-            self.X = torch.tensor(dataframe[features].values).float()
-
-        def __len__(self):
-            return self.X.shape[0]
-
-        def __getitem__(self, i):
-            if i >= self.sequence_length - 1:
-                i_start = i - self.sequence_length + 1
-                x = self.X[i_start:(i + 1), :]
-            else:
-                padding = self.X[0].repeat(self.sequence_length - i - 1, 1)
-                x = self.X[0:(i + 1), :]
-                x = torch.cat((padding, x), 0)
-
-            return x, self.y[i]
 
 
     split = int(len(data) / 10)
@@ -232,60 +206,17 @@ def neural_network(data):
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     evals = []
 
-    def train_model(data_loader, model, loss_function, optimizer):
-        t = time.time()
-        num_batches = len(data_loader)
-        total_loss = 0
-        model.train()
-
-        for X, y in data_loader:
-            X = X.to(device)
-            y = y.to(device)
-            output = model(X)
-            output = output.to(device)
-            loss = loss_function(output, y)
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-            total_loss += loss.item()
-
-        avg_loss = total_loss / num_batches
-        print(f"Train loss: {avg_loss}, Elapsed time in s: {np.round(time.time()-t,2)}")
-
-    def test_model(data_loader, model, loss_function):
-        t = time.time()
-
-        num_batches = len(data_loader)
-        total_loss = 0
-
-        model.to(device)
-        model.eval()
-
-        with torch.no_grad():
-            for X, y in data_loader:
-                X = X.to(device)
-                y = y.to(device)
-                output = model(X)
-                output = output.to(device)
-                total_loss += loss_function(output, y).item()
-
-        avg_loss = total_loss / num_batches
-        evals.append(avg_loss)
-        print(f"Test loss: {avg_loss}, Elapsed time in s: {np.round(time.time()-t,2)}")
-
     print("Untrained test\n--------")
-    test_model(test_loader, model, loss_function)
+    test_model(test_loader, model, loss_function, [])
     print()
     start = time.time()
-    for ix_epoch in range(15):
+    for ix_epoch in range(EPOCHS):
         print(f"Epoch {ix_epoch}\n---------")
         train_model(train_loader, model, loss_function, optimizer=optimizer)
-        test_model(test_loader, model, loss_function)
+        test_model(test_loader, model, loss_function, evals)
         print(f"Elapsed time in s: {np.round(time.time()-start,2)}")
 
-    torch.save(model.state_dict(), f"{FILENAME}_model.pt")
+    torch.save(model.state_dict(), f"{FILENAME}_{SYMBOL}_model.pt")
 
     for X,y in test_loader:
         if "predictions" not in locals():
@@ -299,7 +230,7 @@ def neural_network(data):
     plt.plot(y_true)
     plt.legend(["Preds", "Y_true"])
     plt.title(f"Model without sentiment. MSE {evals[-1]}")
-    plt.savefig(f"{FILENAME}_model_results.png")
+    plt.savefig(f"{FILENAME}_{SYMBOL}_model_results.png")
     plt.show()
 
 if __name__ == "__main__":

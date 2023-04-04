@@ -12,6 +12,12 @@ warnings.filterwarnings('ignore')
 
 
 # BEGIN CONFIG #
+EDA = False
+NN = False
+SK = True
+
+
+
 FILENAME = f"{int(time.time())}"
 SYMBOLS = ["AAPL", "AMZN", "GOOG", "GOOGL", "MSFT", "TSLA"]
 # BEGIN CONFIG GENERAL #
@@ -19,6 +25,7 @@ SYMBOL = "AAPL"
 START = "2015-01-01"
 END = "2019-12-31"
 # BEGIN CONFIG NNA #
+EPOCHS = 5
 SEQUENCE_LENGTH = 32
 BATCH_SIZE = 1
 LR = 5e-4
@@ -42,18 +49,35 @@ if __name__ == '__main__':
     sentiment = pd.read_csv(os.path.join(os.getcwd(), "tweet_data", "Daily_Sentiment.csv"), index_col="day_date")
     sentiment.index = pd.to_datetime(sentiment.index)
     stocks = prepare_stock_data()
-    data = align_stock_sentiment(stocks, sentiment, symbol=SYMBOL, start=START, end=END)
-    data = score_momentum(data, SYMBOL)
+    print()
     # END DATA WRANGLING #
 
-    # BEGIN TRAINING #
-    # neural_network_sentiment(data,SYMBOL)
-    # neural_network(data)
+    # BEGIN EDA #
+    if EDA:
+        compare_sentiment_to_avg(sentiment, symbols=SYMBOLS)
+    # We chose APPL + TSLA
+        for s in SYMBOLS:
+            data_c = align_stock_sentiment(stocks, sentiment, symbol=s, start=START, end=END)
+            show_stock_sentiment(data_c, s, True, path=f"SentimentAndChange_{s}.png")
+            data_c = None
+    # END EDA #
+
+
+    # BEGIN NN #
+    if NN:
+        for s in ["AAPL", "TSLA"]:
+            data_c = align_stock_sentiment(stocks, sentiment, symbol=s, start=START, end=END)
+            neural_network_sentiment(data_c, s)
+            neural_network(data_c)
+            data_c = None
     # END TRAINING #
-    show_stock_sentiment(data, SYMBOL, True, path=f"{FILENAME}_{SYMBOL}.png")
-    # Basic Test
-    #create_train_forecaster(SYMBOL, START, END, exog=False, task = "r", columns = None, target="close_value", steps=1,
-    #                        SEQUENCE_LENGTH=SEQUENCE_LENGTH, filename=FILENAME, verbose=False)
-    # Full Test
-    create_train_forecaster(SYMBOL, START, END, exog=True, task="r", columns=[SYMBOL, "volume"], target="close_value", steps=1,
-                            SEQUENCE_LENGTH=SEQUENCE_LENGTH, filename=FILENAME, metric=custom_loss_sk, verbose=False)
+
+    # BEGIN SKFORECAST #
+    if SK:
+        for s in ["AAPL", "TSLA"]:
+            #create_train_forecaster(s, START, END, exog=False, task = "r", columns = None, target="close_value", steps=1,
+            #                SEQUENCE_LENGTH=SEQUENCE_LENGTH, filename=FILENAME, verbose=False)
+            create_train_forecaster(s, START, END, exog=False, task = "r", columns = [s], target="close_value", steps=1,
+                            SEQUENCE_LENGTH=SEQUENCE_LENGTH, filename=FILENAME, verbose=False)
+
+    # END SKFORECAST #
